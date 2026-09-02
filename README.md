@@ -33,6 +33,13 @@ field.
 For the founding fact, both `en.wikipedia.org` and Wikidata (Q3238)
 independently agree on 29 September 1578, with no discrepancy.
 
+## Operating it
+
+`docs/operator-quickstart.md` — clone to verified checkout. Every
+command there was executed before it was committed, including a
+catalog-vs-`data/` drift check (demonstrated failing on an injected
+one-character change) and a liveness check of the cited URLs.
+
 ## Scope
 
 A **read-only reference/archive** catalog — not an Advisor⊣Governor
