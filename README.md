@@ -52,6 +52,17 @@ fabricate one.
 
 ## Data
 
+- `facts.edn` — verifiable source register (added 2026-09-08 by the
+  ingest scout): one entity per source; `scripts/verify-facts.cljs`
+  re-fetches every URL live and `scripts/mutation-check.cljs` proves it
+  discriminates (15/15 caught, not-caught 0). Two entries are cited (the
+  1578 founding via Wikipedia/Wikidata and the official AMDC portal).
+  The **Ley de Municipalidades** (Decreto 134-90, www.tsc.gob.hn) is
+  live but is **not** cited here: that host intermittently refuses the
+  fleet-growth gate's automated client at connection level, and an entry
+  one judge cannot reliably reach would REFUSE every gate run. It is
+  recorded `:coverage/not-covered` in `facts.edn`'s header, not claimed
+  absent.
 - `src/ordinance/facts.cljc` — the catalog, source of truth.
 - `schema/ordinance.edn` — DataScript schema.
 - `data/datascript-tx.edn` — derived DataScript tx-data (query this
