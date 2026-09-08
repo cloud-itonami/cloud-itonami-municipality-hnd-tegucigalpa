@@ -1,0 +1,77 @@
+;; facts.edn — the verifiable source register for Tegucigalpa.
+;; One entity per source. Mirrors src/ordinance/facts.cljc (the catalog);
+;; scripts/verify-facts.cljs re-fetches every URL here live.
+;; Written 2026-09-08 (ingest scout): every URL below was fetched live during
+;; this run. See :source/verify for the per-source verification method.
+;;
+;; Two hosts are cited:
+;;
+;;   en.wikipedia.org — the founding fact is corroborated by BOTH
+;;                      en.wikipedia.org and Wikidata (Q3238) agreeing on
+;;                      29 September 1578 with no discrepancy (the two
+;;                      preceding municipality entries, Panama City and
+;;                      Guatemala City, each had a real date/lineage
+;;                      discrepancy that had to be resolved; this one does
+;;                      not). Wikipedia is cited as :page-text, so the exact
+;;                      sentences read on 2026-09-08 are pinned.
+;;   amdc.hn          — the Alcaldía Municipal del Distrito Central official
+;;                      portal (organization.edn :official-url). Serves
+;;                      UTF-8 HTML and carries the district name both in the
+;;                      <title> and 12 times in the de-tagged body
+;;                      (measured 2026-09-08). Cited as :page-text.
+;;
+;; ── WHAT IS NOT CITED HERE, AND WHY (not-cited is NOT absent) ──────────────
+;;
+;;   www.tsc.gob.hn — Ley de Municipalidades (Decreto 134-90) PDF, the
+;;                    primary governing law, kept in the catalog
+;;                    (src/ordinance/facts.cljc) as the principal local-act.
+;;                    Measured 2026-09-08: curl reaches it (200
+;;                    application/pdf, %PDF- magic) and this register's own
+;;                    verifier fetched it 3/3 inside a single run, but the
+;;                    fleet-growth gate's independent fetch to the same URL
+;;                    was refused at connection level on FOUR separate gate
+;;                    runs even minutes apart, while the two cited hosts
+;;                    answered. A host that intermittently declines an
+;;                    automated client is recorded as not-covered, not cited:
+;;                    an entry one of the two judges cannot reliably reach
+;;                    would make every gate run REFUSE on a coin flip.
+;;                    Absence here is not-covered, not a claim that the law
+;;                    does not exist.
+;;
+;;   CEPAL plataformaurbana — Decree 134-90 date 1990-10-29, recorded in
+;;                    README.md as secondary corroboration. Its front page is
+;;                    a searchable application shell and no stable static URL
+;;                    for the specific decree record could be pinned this
+;;                    run. Not-cited; not absent.
+;;
+;; Claims stop at the level actually checked: for the two HTML pages, status
+;; + the exact needles read on 2026-09-08. No article text of the Ley is
+;; asserted, because none was read (see not-covered).
+[{:source/id "ordinance.1578-founding"
+  :source/verify :page-text
+  :source/url "https://en.wikipedia.org/wiki/Tegucigalpa"
+  :source/content-type :html
+  :page/must-contain ["Tegucigalpa was founded by Spanish settlers"
+                      "on September 29, 1578"]
+  :ordinance/title "Tegucigalpa was founded as Real de Minas de San Miguel de Tegucigalpa on 29 September 1578 by Spanish settlers"
+  :ordinance/number "1578"
+  :ordinance/enacted-date "1578-09-29"
+  :ordinance/country "HND"
+  :ordinance/municipality "tegucigalpa"
+  :ordinance/kind :local-act
+  :ordinance/url-provenance :wikipedia-wikidata-corroborated
+  :ordinance/topic #{:governance}}
+ {:source/id "municipal-portal.amdc"
+  :source/verify :page-text
+  :source/url "https://amdc.hn/"
+  :source/content-type :html
+  :page/must-contain ["Alcaldía Municipal del Distrito Central"
+                      "Distrito Central"]
+  :ordinance/title "AMDC — Alcaldía Municipal del Distrito Central, official municipal portal"
+  :ordinance/number "portal"
+  :ordinance/enacted-date "2026-09-08"
+  :ordinance/country "HND"
+  :ordinance/municipality "tegucigalpa"
+  :ordinance/kind :ordinance
+  :ordinance/url-provenance :official-amdc-portal
+  :ordinance/topic #{:governance}}]

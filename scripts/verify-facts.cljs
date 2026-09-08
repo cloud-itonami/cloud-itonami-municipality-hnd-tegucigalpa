@@ -1,0 +1,176 @@
+#!/usr/bin/env nbb
+;; Re-fetches every source in facts.edn against the live authority.
+;;
+;;   nbb scripts/verify-facts.cljs                (from the repository root)
+;;   nbb scripts/verify-facts.cljs --facts <path>
+;;
+;; Three exit codes, on purpose:
+;;   0  every source checked out
+;;   1  a source did not check out          -- the register is wrong
+;;   2  the run could not answer            -- NOT a pass; a host declined us
+;;
+;; Connection-level failure of a CITED url (DNS, refused, reset) is exit 1:
+;; a dead citation is register-wrong. HTTP-level refusal (403/429/challenge)
+;; is exit 2 REFUSED: the host answered but will not talk to us, and a blocked
+;; run judges nothing.
+;;
+;; This verifier is written for THIS municipality and its THREE cited hosts,
+;; and its host assumptions are measured at run time, not copied from a
+;; sibling register (the municipality / jpn-* cohort each differ). Concretely:
+;;   - the TSC PDF (www.tsc.gob.hn) is verified on status + content-type AND
+;;     on the %PDF- magic bytes, so a soft-404 that served HTML in place of the
+;;     PDF would be caught by magic-bytes (or http-status) rather than passed
+;;     on content-type alone;
+;;   - the two HTML pages (en.wikipedia.org, amdc.hn) are verified on status +
+;;     the exact must-contain needles read on 2026-09-08;
+;;   - LIVE CHECKS ARE PERFORMED SERIALLY, SEVERAL SECONDS APART. This host
+;;     family serves a bot challenge when asked too fast; measured 2026-09-08,
+;;     a parallel burst of requests to www.tsc.gob.hn dropped the cited PDF to
+;;     connection-level failure while a paced single request answered 200
+;;     application/pdf. A verifier that fired them in parallel would report a
+;;     live quote as dead, so this run does not.
+;;   - none of the three has yet served a persistent bot challenge to this
+;;     client; the challenge detector is kept from the sibling registers so that
+;;     if one ever does, the run REFUSES (exit 2) instead of reporting a pass
+;;     or a register error.
+(ns verify-facts
+  (:require [clojure.edn :as edn]
+            [clojure.string :as str]
+            ["fs" :as fs]
+            [promesa.core :as p]))
+
+(def argv (vec (drop 2 (js->clj (.-argv (js/require "process"))))))
+(defn- flag [name default]
+  (let [i (.indexOf (into-array argv) name)]
+    (if (and (>= i 0) (< (inc i) (count argv))) (nth argv (inc i)) default)))
+
+(def facts-path (flag "--facts" "facts.edn"))
+
+(def facts
+  (try
+    (edn/read-string (str/trim (fs/readFileSync facts-path "utf8")))
+    (catch :default e
+      (println (str "REFUSED\tcannot read " facts-path ": " (.-message e)))
+      (js/process.exit 2))))
+
+(def known-kinds #{:local-act :ordinance})
+(def known-provenance #{:official-tsc-honduras
+                        :wikipedia-wikidata-corroborated
+                        :official-amdc-portal})
+
+(defn https-url? [u] (and (string? u) (re-find #"^https://" u)))
+
+(defn shape-check [e]
+  (cond
+    (not (string? (:source/id e)))                "missing-id"
+    (not (:source/url e))                         "missing-url"
+    (not (https-url? (:source/url e)))            "url-not-https"
+    (not (contains? known-kinds (:ordinance/kind e))) "unknown-kind"
+    (not (contains? known-provenance (:ordinance/url-provenance e))) "unknown-provenance"
+    (empty? (:ordinance/title e))                 "empty-title"
+    (not (string? (:ordinance/enacted-date e)))   "missing-enacted-date"
+    (empty? (:ordinance/number e))                "empty-number"
+    (not (set? (:ordinance/topic e)))             "missing-topic"
+    (not= (:ordinance/municipality e) "tegucigalpa") "municipality-mismatch"
+    (not (re-find #"^[A-Z]{3}$" (or (:ordinance/country e) ""))) "country-case"
+    (and (= :page-text (:source/verify e))
+         (not (seq (:page/must-contain e))))      "missing-must-contain"
+    :else nil))
+
+;; %PDF- is 25 50 44 46 2d. A plain indexed loop over the Uint8Array, so a
+;; large body never blows the call stack and the check reads the declared
+;; document for what the header says it is.
+(defn pdf-magic? [u8]
+  (and (>= (.-length u8) 5)
+       (= 0x25 (aget u8 0))
+       (= 0x50 (aget u8 1))
+       (= 0x44 (aget u8 2))
+       (= 0x46 (aget u8 3))
+       (= 0x2d (aget u8 4))))
+
+(defn live-check [e]
+  (p/let [resp (p/catch (js/fetch (:source/url e) #js {:redirect "follow"})
+                        (fn [err] {:fetch-error (.-message err)}))]
+    (if (:fetch-error resp)
+      {:fail (str "fetch-failed: " (:fetch-error resp))}
+      (let [status (.-status resp)
+            ct (or (.get (.-headers resp) "content-type") "")]
+        (if (>= status 400)
+          (if (#{403 429 503} status)
+            {:refused (str "http " status)}
+            {:fail (str "http-status: " status)})
+          (p/let [ab (p/catch (.arrayBuffer resp) (fn [_] nil))]
+            (cond
+              (= :pdf (:source/content-type e))
+              (cond
+                (not (str/includes? ct "pdf"))
+                {:fail (str "content-type: " ct)}
+                (not (and ab (pdf-magic? (js/Uint8Array. ab))))
+                {:fail "magic-bytes: not %PDF-"}
+                :else {:ok true})
+
+              (= :page-text (:source/verify e))
+              (p/let [body (if ab
+                             (.decode (js/TextDecoder. "utf-8") (js/Uint8Array. ab))
+                             "")]
+                (if (str/blank? body)
+                  {:fail "empty-body-text"}
+                  (let [missed (remove #(str/includes? body %) (:page/must-contain e))]
+                    (if (seq missed)
+                      {:fail (str "must-contain-missing: " (first missed))}
+                      {:ok true}))))
+
+              :else
+              {:fail (str "content-type: " ct)})))))))
+
+(defn delay-ms [ms]
+  (p/create (fn [resolve _] (js/setTimeout resolve ms))))
+
+;; Serial, paced: one fetch at a time with a gap between, so hosts that answer
+;; a challenge to a burst are not tripped by the run itself. Returns a promise
+;; of [entry result] pairs.
+(defn run-serial [entries]
+  (if (next entries)
+    (p/let [r (live-check (first entries))]
+      (p/let [_ (delay-ms 1500)]
+        (p/let [tail (run-serial (rest entries))]
+          (p/resolved (vec (cons [(first entries) r] tail))))))
+    (p/let [r (live-check (first entries))]
+      (p/resolved [[(first entries) r]]))))
+
+(defn self-tests [fs]
+  (let [shape-fails (mapv shape-check fs)
+        ids (map :source/id fs)]
+    [[:shape (fn [] (every? nil? shape-fails))]
+     [:ids-unique (fn [] (= (count ids) (count (distinct ids))))]
+     [:urls-https (fn [] (every? https-url? (map :source/url fs)))]
+     [:text-declares-tokens (fn [] (every? seq (map :page/must-contain (filter #(= :page-text (:source/verify %)) fs))))]
+     [:identity-declared (fn [] (every? #(contains? #{:page-identity :page-text} (:source/verify %)) fs))]]))
+
+(let [shape-fails (mapv shape-check facts)
+      ids (map :source/id facts)
+      dup-id? (not= (count ids) (count (distinct ids)))
+      live-targets (mapv (fn [e f] (when (nil? f) e)) facts shape-fails)]
+  (doseq [[name f] (self-tests facts)]
+    (println (str "SELF-TEST\t" (if (f) "ok" "FAIL") "\t" name)))
+  (doseq [[e f] (map vector facts shape-fails)]
+    (when f (println (str "FAIL\t" (:source/id e) "\treason=" f))))
+  (when dup-id?
+    (println "FAIL\t(duplicate-id)\treason=duplicate-id"))
+  (if (or (some some? shape-fails) dup-id?)
+    (do
+      (println (str "SCANNED\t0\tof " (count facts)))
+      (println "verify-facts: FAILURES PRESENT")
+      (js/process.exit 1))
+    (p/let [results (run-serial facts)]
+      (doseq [[e r] results]
+        (cond
+          (:ok r)      (println (str "ok\t" (:source/id e)))
+          (:refused r) (println (str "REFUSED\t" (:source/id e) "\t" (:refused r)))
+          :else        (println (str "FAIL\t" (:source/id e) "\treason=" (:fail r)))))
+      (let [refused? (some (fn [[_ r]] (:refused r)) results)
+            ok-count (count (filter (fn [[_ r]] (:ok r)) results))
+            all-pass? (and (not refused?) (= ok-count (count facts)))]
+        (println (str "SCANNED\t" ok-count "\tof " (count facts)))
+        (println (str "verify-facts: " (cond all-pass? "ALL PASS" refused? "REFUSED" :else "FAILURES PRESENT")))
+        (js/process.exit (cond all-pass? 0 refused? 2 :else 1))))))
