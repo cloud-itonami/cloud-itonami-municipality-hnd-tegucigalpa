@@ -35,7 +35,7 @@
 ;;     or a register error.
 (ns verify-facts
   (:require [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             ["fs" :as fs]
             [promesa.core :as p]))
 

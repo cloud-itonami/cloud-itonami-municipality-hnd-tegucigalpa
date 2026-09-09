@@ -11,7 +11,7 @@
 ;; ones in facts.edn, not the sibling's.
 (ns mutation-check
   (:require [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             ["child_process" :as cp]
             ["fs" :as fs]
             ["os" :as os]
