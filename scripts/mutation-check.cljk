@@ -1,9 +1,9 @@
-#!/usr/bin/env nbb
+#!/usr/bin/env kbb
 ;; mutation-check.cljs — breaks facts.edn one way at a time and requires the
 ;; verifier to catch EVERY break by the reason it names. Structural mutations
 ;; cost no network; the URL and must-contain mutations fetch live.
 ;;
-;;   nbb scripts/mutation-check.cljk
+;;   kbb --backend sci scripts/mutation-check.cljk
 ;;
 ;; This suite is adapted from the sibling municipality register (guatemala-city)
 ;; and re-measured against THIS register's facts: the source ids, municipality

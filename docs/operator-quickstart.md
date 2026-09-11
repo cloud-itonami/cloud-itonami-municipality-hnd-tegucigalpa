@@ -38,7 +38,7 @@ cd cloud-itonami-municipality-hnd-tegucigalpa
 ## 2. Run the tests
 
 ```bash
-clojure -M:test
+kbb -M:test
 ```
 
 Observed:
@@ -56,7 +56,7 @@ answer.
 ## 3. Read the catalog's own coverage claim
 
 ```bash
-clojure -M -e '(require (quote [ordinance.facts :as f])) (prn (f/coverage))'
+kbb -M -e '(require (quote [ordinance.facts :as f])) (prn (f/coverage))'
 ```
 
 Observed:
@@ -70,7 +70,7 @@ Observed:
 it names the ones with **no spec-basis** instead of inventing them.
 
 ```bash
-clojure -M -e '(require (quote [ordinance.facts :as f])) (prn (f/coverage ["tegucigalpa" "comayagua"]))'
+kbb -M -e '(require (quote [ordinance.facts :as f])) (prn (f/coverage ["tegucigalpa" "comayagua"]))'
 ```
 
 Observed `:covered 1` with `:missing-municipalities ["comayagua"]` —
@@ -83,7 +83,7 @@ Nothing regenerates it automatically, so it can be hand-edited into
 disagreement with its source. This check is what catches that:
 
 ```bash
-clojure -M -e '(require (quote [clojure.edn :as edn]) (quote [clojure.set :as set]) (quote [ordinance.facts :as f])) (let [norm (fn [m] (update m :ordinance/topic set)) file (set (map norm (edn/read-string (slurp "data/datascript-tx.edn")))) code (set (map norm (mapcat val f/catalog)))] (if (= file code) (println "IN SYNC —" (count code) "entries") (do (println "DRIFT") (println "  only in data/datascript-tx.edn:" (pr-str (set/difference file code))) (println "  only in ordinance.facts/catalog:" (pr-str (set/difference code file))) (System/exit 1))))'
+kbb -M -e '(require (quote [clojure.edn :as edn]) (quote [clojure.set :as set]) (quote [ordinance.facts :as f])) (let [norm (fn [m] (update m :ordinance/topic set)) file (set (map norm (edn/read-string (slurp "data/datascript-tx.edn")))) code (set (map norm (mapcat val f/catalog)))] (if (= file code) (println "IN SYNC —" (count code) "entries") (do (println "DRIFT") (println "  only in data/datascript-tx.edn:" (pr-str (set/difference file code))) (println "  only in ordinance.facts/catalog:" (pr-str (set/difference code file))) (System/exit 1))))'
 ```
 
 Observed on a clean tree: `IN SYNC — 2 entries` (exit 0).
@@ -100,7 +100,7 @@ A citation catalog whose URLs have rotted still looks perfectly healthy
 to steps 2–4. Ask the network instead:
 
 ```bash
-clojure -M -e '(require (quote [ordinance.facts :as f])) (doseq [e (mapcat val f/catalog)] (println (:ordinance/url e)))' > /tmp/ordinance-urls.txt
+kbb -M -e '(require (quote [ordinance.facts :as f])) (doseq [e (mapcat val f/catalog)] (println (:ordinance/url e)))' > /tmp/ordinance-urls.txt
 while read -r u; do printf '%s  %s\n' "$(curl -sS -L -o /dev/null -w '%{http_code}' --max-time 25 "$u")" "$u"; done < /tmp/ordinance-urls.txt
 ```
 
@@ -122,7 +122,7 @@ a different URL — see step 7.
 ## 6. Lint
 
 ```bash
-clojure -M:lint
+kbb -M:lint
 ```
 
 Observed: `linting took 923ms, errors: 0, warnings: 0`.
