@@ -132,7 +132,7 @@ Observed: `linting took 923ms, errors: 0, warnings: 0`.
 `ordinance.facts/catalog` is the source of truth; `data/datascript-tx.edn`
 and `schema/ordinance.edn` follow it.
 
-1. Add the entry to `catalog` in `src/ordinance/facts.cljc`, with a URL
+1. Add the entry to `catalog` in `src/ordinance/facts.cljk`, with a URL
    you have actually opened and a `:ordinance/url-provenance` that says
    what kind of source it is (`:official-tsc-honduras`,
    `:wikipedia-and-wikidata-corroborated`, …).
