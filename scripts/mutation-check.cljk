@@ -3,7 +3,7 @@
 ;; verifier to catch EVERY break by the reason it names. Structural mutations
 ;; cost no network; the URL and must-contain mutations fetch live.
 ;;
-;;   nbb scripts/mutation-check.cljs
+;;   nbb scripts/mutation-check.cljk
 ;;
 ;; This suite is adapted from the sibling municipality register (guatemala-city)
 ;; and re-measured against THIS register's facts: the source ids, municipality
@@ -67,7 +67,7 @@
     (fs.writeFileSync tmp (pr-str ((:mutate m) base-facts)))
     (let [r (try
               {:exit 0
-               :out (cp/execFileSync "nbb" #js ["scripts/verify-facts.cljs" "--facts" tmp]
+               :out (cp/execFileSync "nbb" #js ["scripts/verify-facts.cljk" "--facts" tmp]
                                      #js {:cwd (.cwd (js/require "process")) :encoding "utf8"})}
               (catch :default e
                 {:exit (or (.-status e) 1)

@@ -1,6 +1,6 @@
 ;; facts.edn — the verifiable source register for Tegucigalpa.
-;; One entity per source. Mirrors src/ordinance/facts.cljc (the catalog);
-;; scripts/verify-facts.cljs re-fetches every URL here live.
+;; One entity per source. Mirrors src/ordinance/facts.cljk (the catalog);
+;; scripts/verify-facts.cljk re-fetches every URL here live.
 ;; Written 2026-09-08 (ingest scout): every URL below was fetched live during
 ;; this run. See :source/verify for the per-source verification method.
 ;;
@@ -24,7 +24,7 @@
 ;;
 ;;   www.tsc.gob.hn — Ley de Municipalidades (Decreto 134-90) PDF, the
 ;;                    primary governing law, kept in the catalog
-;;                    (src/ordinance/facts.cljc) as the principal local-act.
+;;                    (src/ordinance/facts.cljk) as the principal local-act.
 ;;                    Measured 2026-09-08: curl reaches it (200
 ;;                    application/pdf, %PDF- magic) and this register's own
 ;;                    verifier fetched it 3/3 inside a single run, but the
