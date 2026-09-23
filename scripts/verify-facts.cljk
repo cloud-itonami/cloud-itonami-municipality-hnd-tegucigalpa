@@ -34,7 +34,7 @@
 ;;     if one ever does, the run REFUSES (exit 2) instead of reporting a pass
 ;;     or a register error.
 (ns verify-facts
-  (:require [clojure.edn :as edn]
+  (:require [kotoba.lang.edn :as edn]
             [kotoba.lang.text :as str]
             ["fs" :as fs]
             [promesa.core :as p]))
