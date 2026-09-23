@@ -1,6 +1,6 @@
 (ns ordinance.facts-test
   (:require [kotoba.lang.text :as str]
-            [clojure.test :refer [deftest is]]
+            [kotoba.test :refer [deftest is]]
             [ordinance.facts :as facts]))
 
 (deftest tegucigalpa-has-spec-basis
